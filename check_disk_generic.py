@@ -14,22 +14,6 @@
 #  GNU General Public License for more details.
 #  
 #  See: http://www.gnu.org/copyleft/gpl.html
-#
-#  This plugin reads fstab and finds volumes, tests if they are actually
-#  mounted (if not it gives a warning). Then it checks the size and free
-#  space of the mounted filesystem.
-#  The plugin will be in a warning or critical state whenever one of the 
-#  filesystems are outside the thresholds.
-#
-#  The configfile that can override the nagios-checks default (commandline) arguments
-#  can be placed in the root directory of the mounted filesystem.
-#  For instance if you want to overrid the values for /vol/something,
-#  you should create a file named .nagios_check_disk in that directory.
-#  (/vol/something/.nagios_check_disk)
-#  The configfile would contain something like :
-#  /vol/something|15|5
-#  (where the values are % space free)
-#
 
 import os
 import argparse
@@ -154,9 +138,9 @@ if __name__ == "__main__":
             output.append("WARNING: {0} not mounted, but exists in fstab.".format(mount))
             exit_status = 1 # warning if disks are not mounted
     if not exit_status == 0:
-        print "{0}(code: {1})".format(output,exit_status)
+        print "{0}".format(output,exit_status)
         exit(exit_status)
     else: 
-        print "{0}(code: {1})".format(output,exit_status)
+        print "All good!".format(output,exit_status)
         exit(exit_status)
                 
