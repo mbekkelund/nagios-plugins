@@ -66,8 +66,13 @@ def read_fstab():
         else:
             if not l.startswith('#'):
                 mount = l.split()[1]
-                if not mount in skip:
-                    mounts.append(mount) 
+                fs    = l.split()[2]
+                if arguments.s is None:
+                    if not mount in skip:
+                        mounts.append(mount) 
+                else:
+                    if not mount in skip and not fs in arguments.s:
+                        mounts.append(mount) 
         
     return mounts
 
@@ -93,11 +98,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Options:')
     parser.add_argument('-w', metavar='warning', type=int, help='warning value in % (integer)', required=True)
     parser.add_argument('-c', metavar='critical', type=int, help='critical value in % (integer)', required=True)
+    parser.add_argument('-s', metavar='skipfs', type=str, help='skip filesystems (ex: nfs,nfs4)', required=False, default=None)
     try:
         arguments = parser.parse_args()
     except:
         print "UNKNOWN: Error in argumentparsing"
         exit(3)
+
+    skipfs = []
+    if arguments.s:
+        skipfs = arguments.s.split(',')
 
     fstab = read_fstab()
     host = get_hostname()
