@@ -129,8 +129,6 @@ if __name__ == "__main__":
                     elif free_pct < int(warning):
                         output.append("{0} WARNING ({1}% free)".format(path,free_pct))
                         exit_status = 1
-                    #else:
-                        #output.append("{0} OK ({1}% free)".format(path,free_pct))
                     break
             else:
                 if free_pct < int(arguments.c):
@@ -139,8 +137,6 @@ if __name__ == "__main__":
                 elif free_pct < int(arguments.w):
                     output.append("{0} WARNING ({1}% free)".format(mount,free_pct))
                     exit_status = 1
-                #else:
-                #    output.append("{0} OK ({1}% free)".format(mount,free_pct))
          
                 if debug:
                     print "partition: {0} using default values. warning: {3}%, critical: {4}% (actualsize: {1}MB actualfree: {2}MB = {5}%)".format(mount,size,free,arguments.w,arguments.c,free_pct)
