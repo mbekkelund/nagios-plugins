@@ -14,6 +14,22 @@
 #  GNU General Public License for more details.
 #  
 #  See: http://www.gnu.org/copyleft/gpl.html
+#
+#
+#  This plugin is checking every filesystem in fstab.
+#  It checks if the filesystem is mounted and returns a warning if its not.
+#  The plugin takes -w warning and -c critical params for disk usage.
+#  You can skip filesystems in the skip = [] python list, or add them 
+#  on the commandline using the -s param.
+#  The plugin's -w and -c params can be overridden by a 
+#  .nagios_check_disk file on the mounted disk (if the file exits).
+#  format of the file is : 
+#  /mountpoint|warning|critical
+#  ex:
+#  /tmp|30|20
+#  The reason for this is to let owners of the mounted disks decide the 
+#  thresholds. (Less work for the sysadmin and more "shoot yourself in the foot"
+#  for the owners.
 
 import os
 import argparse
@@ -21,10 +37,11 @@ import re
 import socket
 
 skip = ['/proc','none']
-exit_status = 0 # unknown, we dont know what the status is yet
+status = 0 # for picking up exitstatus
 configfile = ".nagios_check_disk"
 fstabfile = "/etc/fstab"
 debug = 0
+exit_status = {'OK': 0, 'WARNING': 1, 'CRITICAL': 2, 'UNKNOWN': 3}
 
 def read_config(dir,file):
     ''' in some cases we want to overwrite the generic checks params,
@@ -57,7 +74,7 @@ def read_fstab():
         f = open(fstabfile,"r")
     except:
         print "Can not read fstab."
-        exit(3)
+        exit(exit_status['UNKNOWN'])
         
     mounts = []
     for l in f.readlines():
@@ -103,7 +120,7 @@ if __name__ == "__main__":
         arguments = parser.parse_args()
     except:
         print "UNKNOWN: Error in argumentparsing"
-        exit(3)
+        exit(exit_status['UNKNOWN'])
 
     skipfs = []
     if arguments.s:
@@ -125,28 +142,28 @@ if __name__ == "__main__":
                         print "partition: {0} using custom values, warning: {1}%, critical: {2}% (actualsize: {3}MB actualfree: {4}MB = {5}%)".format(path,warning,critical,size,free,free_pct)
                     if free_pct < int(critical):
                         output.append("{0} CRITICAL ({1}% free)".format(path,free_pct))
-                        exit_status = 2
+                        status = exit_status['CRITICAL']
                     elif free_pct < int(warning):
                         output.append("{0} WARNING ({1}% free)".format(path,free_pct))
-                        exit_status = 1
+                        status = exit_status['WARNING']
                     break
             else:
                 if free_pct < int(arguments.c):
                     output.append("{0} CRITICAL ({1}% free)".format(mount,free_pct))
-                    exit_status = 2
+                    status = exit_status['CRITICAL']
                 elif free_pct < int(arguments.w):
                     output.append("{0} WARNING ({1}% free)".format(mount,free_pct))
-                    exit_status = 1
+                    status = exit_status['WARNING']
          
                 if debug:
                     print "partition: {0} using default values. warning: {3}%, critical: {4}% (actualsize: {1}MB actualfree: {2}MB = {5}%)".format(mount,size,free,arguments.w,arguments.c,free_pct)
         else:
             output.append("WARNING: {0} not mounted, but exists in fstab.".format(mount))
-            exit_status = 1 # warning if disks are not mounted
+            status = exit_status['WARNING'] # warning if disks are not mounted
     if not exit_status == 0:
         print "{0}".format(output,exit_status)
-        exit(exit_status)
+        exit(status)
     else: 
         print "All good!".format(output,exit_status)
-        exit(exit_status)
+        exit(status)
                 
