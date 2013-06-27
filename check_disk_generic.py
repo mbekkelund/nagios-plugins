@@ -49,10 +49,7 @@ def read_config(dir,file):
         if its not there, default values will be used
     '''
     conf = []
-    if dir == "/":
-        file=dir+file
-    else:
-        file=dir+'/'+file
+    os.path.join(dir,file)
     if debug:
         print "reading {0}".format(file)
     try:
