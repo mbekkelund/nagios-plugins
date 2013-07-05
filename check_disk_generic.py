@@ -43,6 +43,31 @@ fstabfile = "/etc/fstab"
 debug = 0
 exit_status = {'OK': 0, 'WARNING': 1, 'CRITICAL': 2, 'UNKNOWN': 3}
 
+def return_ro_mounts():
+    ''' 
+        open /proc/mounts and return local mounted readonly filsystems 
+        (skipping non-real and remote filesystems)
+    '''
+
+    # a list of all filesystems we want to check 
+    truefs = ['ext','ext2','ext3','ext4','xfs','reiserfs']
+
+    try:
+        proc = open("/proc/mounts","r")
+    except:
+        print "Failed to open file /proc/mounts."
+
+    for line in proc.readlines():
+            line = line.strip().split(" ")
+            mp      = line[1]        # mountpoint
+            fs      = line[2]        # filesystem
+            status  = line[3][:2]    # ro/rw status
+            ro_mounts = []
+            if fs in truefs:
+                if re.match("^ro",status):
+                    ro_mounts.append(mp)
+                    return ro_mounts
+
 def read_config(dir,file):
     ''' in some cases we want to overwrite the generic checks params,
         so we'll read a configfile for this purpose...
@@ -113,19 +138,33 @@ if __name__ == "__main__":
     parser.add_argument('-w', metavar='warning', type=int, help='warning value in % (integer)', required=True)
     parser.add_argument('-c', metavar='critical', type=int, help='critical value in % (integer)', required=True)
     parser.add_argument('-s', metavar='skipfs', type=str, help='skip filesystems (ex: nfs,nfs4)', required=False, default=None)
+    parser.add_argument('-ro', metavar='read-only', type=str, help='check if filesystems are mounted read-only', required=False)
+
     try:
         arguments = parser.parse_args()
     except:
         print "UNKNOWN: Error in argumentparsing"
         exit(exit_status['UNKNOWN'])
 
+    output = []
+
+    # checking for readonly mounts
+    status = return_ro_mounts()
+    if status:
+        output.append("{0} mounted READ-ONLY.".format(status))
+        status = exit_status['WARNING']
+    else:
+        #output.append("OK: All disks mounted READ-WRITE.")
+        status = exit_status['OK']
+
+    # checking if volumes are mounted according to fstab and the amount of free space pr mount
     skipfs = []
     if arguments.s:
         skipfs = arguments.s.split(',')
 
     fstab = read_fstab()
     host = get_hostname()
-    output = []
+
     for mount in fstab:
         if os.path.ismount(mount):
             conf = read_config(mount,configfile)
