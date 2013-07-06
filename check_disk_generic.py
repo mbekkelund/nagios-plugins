@@ -125,7 +125,7 @@ def get_fs_freespace(path):
 
     
 def get_fs_size(path):
-    ''' return free space '''
+    ''' return total space '''
     stat = os.statvfs(path)
     return stat.f_frsize*stat.f_blocks/1024/1024 #return in MB
 
