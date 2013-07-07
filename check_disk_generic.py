@@ -197,9 +197,9 @@ if __name__ == "__main__":
             output.append("WARNING: {0} not mounted, but exists in fstab.".format(mount))
             status = exit_status['WARNING'] # warning if disks are not mounted
     if not exit_status == 0:
-        print "{0}".format(output,exit_status)
+        print "{0}".format(output)
         exit(status)
     else: 
-        print "All good!".format(output,exit_status)
+        print "All good!"
         exit(status)
                 
