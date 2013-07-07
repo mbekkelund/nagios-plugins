@@ -36,7 +36,8 @@ import argparse
 import re
 import socket
 
-skip = ['/proc','none']
+skip = ['/proc','none','/media/cdrom0']
+
 status = 0 # for picking up exitstatus
 configfile = ".nagios_check_disk"
 fstabfile = "/etc/fstab"
@@ -149,12 +150,11 @@ if __name__ == "__main__":
     output = []
 
     # checking for readonly mounts
-    status = return_ro_mounts()
-    if status:
-        output.append("{0} mounted READ-ONLY.".format(status))
+    ro = return_ro_mounts()
+    if not ro == None:
+        output.append("{0} mounted READ-ONLY.".format(ro))
         status = exit_status['WARNING']
     else:
-        #output.append("OK: All disks mounted READ-WRITE.")
         status = exit_status['OK']
 
     # checking if volumes are mounted according to fstab and the amount of free space pr mount
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         else:
             output.append("WARNING: {0} not mounted, but exists in fstab.".format(mount))
             status = exit_status['WARNING'] # warning if disks are not mounted
-    if not exit_status == 0:
+    if not status == 0:
         print "{0}".format(output)
         exit(status)
     else: 
