@@ -54,7 +54,7 @@ if __name__ == '__main__':
     (exit, output) = execute_plugin(arguments.H,arguments.p,arguments.t)
     if not output:
         print "Remote execution of {0} unsuccessful.".format(arguments.p)
-        print "Check if the plugin exists on the remote host and that the permissions" \
+        print "Check if the plugin exists on the remote host and that the permissions " \
                 "are correct."
 
 print(output)
