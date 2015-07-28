@@ -3,7 +3,7 @@
 
 ##############################################################################
 #   Nagios-plugin that runs a dd-command to measure write-speed to a mountpoint.
-#   2012 - mortenb@met.no
+#   2012 - morten bekkelund
 ##############################################################################
 #   15. Disclaimer of Warranty.
 #
@@ -29,48 +29,48 @@
 # SUCH DAMAGES.
 ##############################################################################
 
-
 # subprocess lets you run commands, argparse parses arguments from the commandline
-import argparse, subprocess, re, os
+import argparse
+import subprocess
+import re
+import os
 
+ERROR_CODES = {'OK':0, 'WARNING':1, 'CRITICAL':2, 'UNKNOWN':3}
 
-class file_obj:
-    def __init__(self):
-        self.speed = False
-        self.units = False
-        self.tmpfile = "/tmp/nagios_dd_tmpfile"
-        self.ddfile = ".nagios-dd-test"
-        self.filecontent = False
+speed = False
+units = False
+tmpfile = "/tmp/nagios_dd_tmpfile"
+ddfile = ".nagios-dd-test"
+filecontent = False
 
-    def run_dd(self, directory, count):
-        """ dd a file into a directory and return writespeed. """
-        os.system("dd if=/dev/full of="+directory+"/"+self.ddfile+" bs=1M count="+str(count)+" > "+self.tmpfile+" 2>&1 &")
+def run_dd(directory, count):
+    """ dd a file into a directory and return writespeed. """
+    os.system("dd if=/dev/full of={0}/{1} bs=1M count={2} > {3} 2>&1 &".format(directory,ddfile,str(count),tmpfile))
 
-    def check_space(self,directory):
-        """ check if there is sufficent space on the disk to run dd with requested filesize """
-        disk = os.statvfs(directory)
-        available = (disk.f_frsize * disk.f_bavail) / 1024 
-        return available
-    
-    def read_file(self):
-        """ reads the buffered dd file from previous run """
-        if os.path.exists(self.tmpfile):
-            f = open(self.tmpfile)
-            output = f.read().split("\n")[2].split(",")[2]
-            self.speed = int(re.search('(\d+)', output).group(0).strip(' \t\n\r'))
-            self.units = re.search('([A-Z].*)', output).group(0).strip(' \t\n\r')
+def check_space(directory):
+    """ check if there is sufficent space on the disk to run dd with requested filesize """
+    disk = os.statvfs(directory)
+    available = (disk.f_frsize * disk.f_bavail) / 1024
+    return available
+
+def read_file():
+    """ reads the buffered dd file from previous run """
+    if os.path.exists(tmpfile):
+        try:
+            f = open(tmpfile)
+            output = f.read().split("\n")[2].split(" ")[-2:]
             f.close()
             # running new dd
-            file_obj().run_dd(arguments.d,arguments.s)
-            return self
-        else:
-            print "UNKNOWN: tmpfile does not exist. Wait for next run."
-            # running new dd
-            file_obj().run_dd(arguments.d,arguments.s)
-            exit(3)
-            
-        
-        
+            run_dd(arguments.d,arguments.s)
+            return output
+        except IndexError as e:
+            print "Plugin failed reading {0} (dd/plugin allready running?): Error: {1}".format(ddfile,e)
+            exit(ERROR_CODES['UNKNOWN'])
+    else:
+        print "tmpfile does not exist. Wait for next run."
+        # running new dd
+        run_dd(arguments.d,arguments.s)
+        exit(ERROR_CODES['UNKNOWN'])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Options:')
@@ -82,40 +82,38 @@ if __name__ == '__main__':
     try:
         arguments = parser.parse_args()
     except:
-        print "UNKNOWN: Error in argumentparsing"
-        exit(3)
+        print "Error in argumentparsing"
+        exit(ERROR_CODES['UNKNOWN'])
 
-    # performing a check on the volume to see if it has enough space for the dd-file to be written 
-    space = file_obj().check_space(arguments.d)
+    # performing a check on the volume to see if it has enough space for the dd-file to be written
+    space = check_space(arguments.d)
     if space < (arguments.s * 1024):
-        print "UNKNOWN: Cannot perform dd on the volume. Not enough space."
-        exit(3)
+        print "Cannot perform dd on the volume. Not enough space."
+        exit(ERROR_CODES['UNKNOWN'])
 
     # reading tmpfile from previous run
-    result = file_obj().read_file()
+    result = read_file()
 
-
-    speed = result.speed
-    units = result.units
-        
+    speed = result[0]
+    units = result[1]
 
     # if its GB/s we dont even care!
     if units == "GB/s":
-          print "OK: According to YOU %s %s is all good!" % (speed, units)
-              exit(0)
+        print "OK: According to YOU {0}{1} is all good!".format(speed, units)
+        exit(ERROR_CODES['OK'])
      # but if its MB/s ...we should check the speed
     elif units == "MB/s":
         if arguments.c > speed:
-            print "CRITICAL: OMG %s %s is less than %s" % (speed, units, arguments.c)
-            exit(2)
-        elif arguments.w > speed: 
-            print "WARNING:  OMG %s %s is less than %s" % (speed, units, arguments.w)
-            exit(1)
+            print "{0}{1} is less than {2}".format(speed, units, arguments.c)
+            exit(ERROR_CODES['CRITICAL'])
+        elif arguments.w > speed:
+            print "{0}{1} is less than {2}".format(speed, units, arguments.w)
+            exit(ERROR_CODES['WARNING'])
         else:
-            print "OK: According to YOU %s %s is all good!" % (speed, units)
-            exit(0)
+            print "According to YOU {0}{1} is all good!".format(speed, units)
+            exit(ERROR_CODES['OK'])
     # and if it aint the two above, we're pretty much screwed
     else:
-        print "CRITICAL: OMG %s %s is like ....FAIL" % (speed, units)
-        exit(2)
+        print "{0}{1} is like ....FAIL".format(speed, units)
+        exit(ERROR_CODES['CRITICAL'])
 
